@@ -1,0 +1,38 @@
+# Пути (внутри контейнера; снаружи монтируются через -v)
+data_dir: data
+raw_dir: data/raw            # сюда монтируется папка sound/ (aphasia, nt_train, nt)
+processed_dir: data/processed
+cache_dir: data/cache
+checkpoint_dir: checkpoints
+reports_dir: reports
+
+# Данные
+language: ru
+target_sr: 16000           # единый формат после препроцессинга (librosa)
+max_audio_sec: 300         # кап длины записи (у wav2vec2 нет жёсткого окна 30 с, как у Whisper)
+max_text_tokens: 128       # максимум токенов транскрипта
+val_size: 0.15             # доля дикторов в val внутри каждого фолда
+test_size: 0.15            # используется, только если n_folds: 1
+n_folds: 5                 # StratifiedGroupKFold по дикторам RuAphasiaBank
+use_nt: true               # false = абляция E1: train только на RuAphasiaBank
+
+# Модальные энкодеры (заморожены)
+audio_model: facebook/wav2vec2-xls-r-300m   # как в курсовой работе; 1024-мерные фреймы
+fragment_sec: 10           # длина фрагмента для прогона через wav2vec2 (лимит VRAM; 10 с ~ 500 фреймов)
+audio_fps: 50              # фреймов эмбеддинга в секунду у wav2vec2 (шаг 20 мс)
+whisper_model: small       # ТОЛЬКО для ASR-транскриптов (tiny | base | small)
+text_model: cointegrated/rubert-tiny2
+
+# Фузирование (раннее, cross-attention: Q = текст, K = V = аудио)
+d_model: 256
+n_heads: 4
+dropout: 0.1
+
+# Обучение
+seed: 42
+batch_size: 4              # меньше, чем при 30-с окне: аудио-последовательности длиннее
+epochs: 40
+lr: 1.0e-3
+weight_decay: 1.0e-2
+patience: 8                # early stopping по val F1
+device: auto               # auto | cuda | cpu
